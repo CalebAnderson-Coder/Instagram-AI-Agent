@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { geminiApiKeys } from "../secret";
+import { geminiApiKey } from "../secret";
 import logger from "../config/logger";
 
 
@@ -70,23 +70,25 @@ export async function loadCookies(cookiesPath: string): Promise<any[]> {
     }
 }
 
-// Function to get the next API key in the list
-export const getNextApiKey = (currentApiKeyIndex: number) => {
-    currentApiKeyIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length; // Circular rotation of API keys
-    return geminiApiKeys[currentApiKeyIndex];
-};
-
-
 export async function handleError(error: unknown, currentApiKeyIndex: number, schema: any, prompt: string, runAgent: (schema: any, prompt: string) => Promise<string>): Promise<string> {
     if (error instanceof Error) {
-        if (error.message.includes("429 Too Many Requests")) {
-            logger.error(`---GEMINI_API_KEY_${currentApiKeyIndex + 1} limit exhausted, switching to the next API key...`);
-            const geminiApiKey = getNextApiKey(currentApiKeyIndex);
-            const currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
+        if (error.message.includes("429 Too Many Requests") || error.message.includes("403 Forbidden")) {
+            logger.error("API limit reached or key invalid. Waiting before retry...");
+            
+            // Exponential backoff with jitter
+            const delay = Math.min(
+                1000 * Math.pow(2, currentApiKeyIndex) + Math.random() * 1000,
+                30000 // Max 30 seconds
+            );
+            logger.info(`Waiting ${delay}ms before retrying...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
             return runAgent(schema, prompt);
         } else if (error.message.includes("503 Service Unavailable")) {
             logger.error("Service is temporarily unavailable. Retrying...");
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            // Use exponential backoff for service unavailable errors too
+            const delay = 5000 + Math.random() * 2000; // 5-7 seconds with jitter
+            await new Promise(resolve => setTimeout(resolve, delay));
             return runAgent(schema, prompt);
         } else {
             logger.error(`Error generating training prompt: ${error.message}`);

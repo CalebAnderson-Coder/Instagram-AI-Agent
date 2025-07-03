@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import logger from "../config/logger";
-import { geminiApiKeys } from "../secret";
+import { geminiApiKey } from "../secret";
 import { handleError } from "../utils";
 import { InstagramCommentSchema } from "./schema";
 import fs from "fs";
@@ -8,9 +8,6 @@ import path from "path";
 import * as readlineSync from "readline-sync";
 
 export async function runAgent(schema: InstagramCommentSchema, prompt: string): Promise<any> {
-    let currentApiKeyIndex = 0;  
-    let geminiApiKey = geminiApiKeys[currentApiKeyIndex];
-
     if (!geminiApiKey) {
         logger.error("No Gemini API key available.");
         return "No API key available.";
@@ -39,7 +36,7 @@ export async function runAgent(schema: InstagramCommentSchema, prompt: string): 
 
         return data;
     } catch (error) {
-        await handleError(error, currentApiKeyIndex, schema, prompt, runAgent);
+        await handleError(error, 0, schema, prompt, runAgent);
     }
 }
 
