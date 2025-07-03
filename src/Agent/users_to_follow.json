@@ -1,0 +1,12 @@
+{
+  "users": [
+    "sabrina_ramonov"
+  ],
+  "settings": {
+    "max_posts_per_user": 3,
+    "interaction_delay_seconds": {
+      "min": 5,
+      "max": 15
+    }
+  }
+}
